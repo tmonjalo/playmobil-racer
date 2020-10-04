@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import sys
+import time
 from bluepy import btle
 
 
@@ -68,6 +69,9 @@ class PlaymobilRacer:
         self.rssi = rssi
         self.device = None
         self.handle = None
+        self.rotation = 0
+        self.direction = 0
+        self.move_time = 0.1
 
     def __del__(self):
         self.disconnect()
@@ -120,6 +124,7 @@ class PlaymobilRacer:
 
     def turn(self, direction=0):
         self._send_int8(b'\x40', direction)
+        self.direction = direction
 
     def speed(self, level=5):
         level = max(level, 1)
@@ -128,11 +133,29 @@ class PlaymobilRacer:
 
     def motor(self, rotation=0):
         self._send_int8(b'\x23', rotation)
+        self.rotation = rotation
 
     def stop(self):
         self.turn(0)
         self.motor(0)
         self.light(False)
+
+    def move1(self, rotation=0, direction=0):
+        self.motor(rotation)
+        self.turn(direction)
+        time.sleep(self.move_time)
+
+    def move(self, rotation=0, direction=0, repeat=0, steps=0):
+        steps = min(repeat, steps)
+        while steps > 1:
+            rotstep = (rotation - self.rotation) // steps
+            dirstep = (direction - self.direction) // steps
+            self.move1(self.rotation + rotstep, self.direction + dirstep)
+            steps -= 1
+            repeat -= 1
+        while repeat > 0:
+            self.move1(rotation, direction)
+            repeat -= 1
 
 
 def demo(mac=None):
